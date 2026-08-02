@@ -1,14 +1,14 @@
 package org.pavan.productservice.controllers;
 
+import org.pavan.productservice.dtos.CategoryDto;
+import org.pavan.productservice.dtos.ProductDto;
 import org.pavan.productservice.services.CategoryService;
-import org.pavan.productservice.services.ProductService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/products/categories")
+@RequestMapping("/categories")
 public class CategoryController
 {
     private final CategoryService categoryService;
@@ -19,14 +19,38 @@ public class CategoryController
     }
 
     @GetMapping()
-    public String getAllCategories()
+    public List<CategoryDto> getAllCategories()
     {
-        return "Getting all categories";
+        return categoryService.getAllCategories();
+    }
+
+    @GetMapping("/{categoryId}/products")
+    public List<ProductDto> getProductsInCategory(@PathVariable("categoryId") long categoryId)
+    {
+        return categoryService.getProductsInCategory(categoryId);
     }
 
     @GetMapping("/{categoryId}")
-    public String getProductsInCategory(@PathVariable("categoryId") long categoryId)
+    public String getCategoryById(@PathVariable("categoryId") long categoryId)
     {
-        return "Get products in category id: " + categoryId;
+        return "Get Category By Id: " + categoryId;
+    }
+
+    @PostMapping()
+    public String addNewCategory(@RequestBody CategoryDto categoryDto)
+    {
+           return "Added New Category " + categoryDto;
+    }
+
+    @PutMapping("/{categoryId}")
+    public String updateCategory(@PathVariable("categoryId") long categoryId, @RequestBody CategoryDto categoryDto)
+    {
+        return  "Updated Category id: " + categoryId;
+    }
+
+    @DeleteMapping("/{categoryId}")
+    public String deleteCategory(@PathVariable("categoryId") long categoryId)
+    {
+        return "Deleted Category id: "+ categoryId;
     }
 }
