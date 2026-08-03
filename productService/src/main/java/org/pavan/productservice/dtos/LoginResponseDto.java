@@ -5,7 +5,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class RatingDto {
-    private double rate;
-    private int count;
+public class LoginResponseDto {
+    private String token;
 }

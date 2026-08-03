@@ -1,109 +1,115 @@
 package org.pavan.productservice.services;
 
 import org.pavan.productservice.dtos.ProductDto;
-import org.pavan.productservice.models.Category;
+import org.pavan.productservice.exceptions.ProductNotFoundException;
+import org.pavan.productservice.mappers.ProductMapper;
 import org.pavan.productservice.models.Product;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Service
-public class FakeStoreProductImplementation implements ProductService
-{
+public class FakeStoreProductImplementation implements ProductService {
 
-    private RestClient restClient;
+    private final RestClient restClient;
 
-    public FakeStoreProductImplementation(RestClient restClient)
-    {
+    public FakeStoreProductImplementation(RestClient restClient) {
         this.restClient = restClient;
     }
 
     @Override
     public List<Product> getAllProducts() {
-        ProductDto[] productDtos = restClient.get().uri("/products").retrieve().body(ProductDto[].class);
-        List<Product> products = new ArrayList<>();
-        for(ProductDto productDto: productDtos)
-        {
-            Product product = new Product();
-            product.setId(productDto.getId());
-            product.setPrice(productDto.getPrice());
-            Category category = new Category();
-            category.setName(productDto.getCategory());
-            product.setCategory(category);
-            product.setImageUrl(productDto.getImage());
-            product.setTitle(productDto.getTitle());
-
-            products.add(product);
-        }
-        return products;
+        ProductDto[] productDtos = restClient.get()
+                .uri("/products")
+                .retrieve()
+                .body(ProductDto[].class);
+        return ProductMapper.toProductList(productDtos);
     }
 
-    /*
-        Return a product object with all the details of the fetched product
-        The ID of the category will be null but the name of the category shall be correct
-     */
+    @Override
+    public List<Product> getProductsWithLimit(int limit) {
+        ProductDto[] productDtos = restClient.get()
+                .uri("/products?limit={limit}", limit)
+                .retrieve()
+                .body(ProductDto[].class);
+        return ProductMapper.toProductList(productDtos);
+    }
+
+    @Override
+    public List<Product> getProductsSorted(String sort) {
+        ProductDto[] productDtos = restClient.get()
+                .uri("/products?sort={sort}", sort)
+                .retrieve()
+                .body(ProductDto[].class);
+        return ProductMapper.toProductList(productDtos);
+    }
 
     @Override
     public Product getSingleProduct(Long productId) {
-
-//        ResponseEntity<ProductDto> response = restClient
-//                .get()
-//                .uri("/products/{productId}", productId)
-//                .retrieve()
-//                .toEntity(ProductDto.class);
-//
-//        ProductDto productDto = response.getBody();
-
-        ProductDto productDto = restClient.get().uri("/products/{productId}",productId).retrieve().body(ProductDto.class);
-
-        Product product = new Product();
-
-        product.setId(productDto.getId());
-        product.setTitle(productDto.getTitle());
-        product.setDescription(productDto.getDescription());
-        product.setPrice(productDto.getPrice());
-        product.setImageUrl(productDto.getImage());
-
-        Category category = new Category();
-        category.setName(productDto.getCategory());
-
-        product.setCategory(category);
-
-        return product;
+        try {
+            ProductDto productDto = restClient.get()
+                    .uri("/products/{productId}", productId)
+                    .retrieve()
+                    .body(ProductDto.class);
+            return ProductMapper.toProduct(productDto);
+        } catch (RestClientResponseException ex) {
+            if (ex.getStatusCode().value() == 404) {
+                throw new ProductNotFoundException(productId);
+            }
+            throw ex;
+        }
     }
 
     @Override
-    public Product addNewProduct(ProductDto productdto) {
-        ProductDto productDto = restClient.post().uri("/products").body(productdto).retrieve().body(ProductDto.class);
-
-        // Convert DTO -> Entity
-        Product newProduct = new Product();
-        newProduct.setId(productDto.getId());
-        newProduct.setTitle(productDto.getTitle());
-        newProduct.setDescription(productDto.getDescription());
-        newProduct.setPrice(productDto.getPrice());
-
-        Category category = new Category();
-        category.setName(productDto.getCategory());
-
-        newProduct.setCategory(category);
-        newProduct.setImageUrl(productDto.getImage());
-
-        return newProduct;
+    public List<Product> getProductsByCategory(String categoryName) {
+        ProductDto[] productDtos = restClient.get()
+                .uri("/products/category/{categoryName}", categoryName)
+                .retrieve()
+                .body(ProductDto[].class);
+        return ProductMapper.toProductList(productDtos);
     }
 
     @Override
-    public Product updateProduct(Long productId, Product product) {
-        return null;
+    public Product addNewProduct(ProductDto productDto) {
+        ProductDto response = restClient.post()
+                .uri("/products")
+                .body(productDto)
+                .retrieve()
+                .body(ProductDto.class);
+        return ProductMapper.toProduct(response);
     }
 
     @Override
-    public boolean deleteProduct(Long productId) {
-        return false;
+    public Product updateProduct(Long productId, ProductDto productDto) {
+        try {
+            ProductDto response = restClient.put()
+                    .uri("/products/{productId}", productId)
+                    .body(productDto)
+                    .retrieve()
+                    .body(ProductDto.class);
+            return ProductMapper.toProduct(response);
+        } catch (RestClientResponseException ex) {
+            if (ex.getStatusCode().value() == 404) {
+                throw new ProductNotFoundException(productId);
+            }
+            throw ex;
+        }
+    }
+
+    @Override
+    public void deleteProduct(Long productId) {
+        try {
+            restClient.delete()
+                    .uri("/products/{productId}", productId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException ex) {
+            if (ex.getStatusCode().value() == 404) {
+                throw new ProductNotFoundException(productId);
+            }
+            throw ex;
+        }
     }
 }
